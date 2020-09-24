@@ -37,15 +37,6 @@ include_directories(
     ../dependencies/include
 )
 
-IF(LINUX)
-    add_library(binreloc STATIC ../dependencies/sources/binreloc/binreloc.c)
-    set_target_properties(binreloc PROPERTIES COMPILE_DEFINITIONS "ENABLE_BINRELOC")
-
-    include_directories(
-        ../dependencies/sources/binreloc/
-    )
-ENDIF()
-
 # common shared source
 file(GLOB common_sources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     sources/ai/*

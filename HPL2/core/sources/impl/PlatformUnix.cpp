@@ -36,7 +36,7 @@
 
 #ifdef __linux__
 #include <FL/fl_ask.H>
-#include "binreloc.h"
+#include <filesystem>
 
 #include <sys/types.h>
 #endif
@@ -369,18 +369,12 @@ namespace hpl {
     tString cPlatform::GetDataDir()
     {
         tString temp;
-        BrInitError error;
-		if (!br_init (&error)) {
-			// Log non-fatal error
-			printf("*** BinReloc failed to initialize. Error: %d\n", error);
-		} else {
-			char *exedir;
-			exedir = br_find_exe_dir(NULL);
-			if (exedir) {
-				temp = exedir;
-				free(exedir);
-			}
-		}
+        const std::string path = "/proc/" + std::to_string(getpid()) + "/exe";
+        if (!std::filesystem::is_symlink(path)) {
+            printf(" *** %s is not a symlink\n", path.c_str());
+            return temp;
+        }
+        temp = std::filesystem::read_symlink(path).c_str();
         return temp;
     }
 #endif
