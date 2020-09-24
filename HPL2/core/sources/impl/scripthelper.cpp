@@ -35,7 +35,7 @@ int CompareRelation(asIScriptEngine *engine, void *lobj, void *robj, int typeId,
 	int retval = -1;
 	asIScriptFunction *func = 0;
 
-	asITypeInfo *ot = engine->GetObjectTypeById(typeId);
+	asITypeInfo *ot = engine->GetTypeInfoById(typeId);
 	if( ot )
 	{
 		// Check if the object type has a compatible opCmp method
@@ -47,7 +47,8 @@ int CompareRelation(asIScriptEngine *engine, void *lobj, void *robj, int typeId,
 				f->GetParamCount() == 1 )
 			{
 				asDWORD flags;
-				int paramTypeId = f->GetParamTypeId(0, &flags);
+				int paramTypeId;
+                                f->GetParam(0, &paramTypeId, &flags);
 				
 				// The parameter must be an input reference of the same type
 				if( flags != asTM_INREF || typeId != paramTypeId )
@@ -89,7 +90,7 @@ int CompareEquality(asIScriptEngine *engine, void *lobj, void *robj, int typeId,
 	int retval = -1;
 	asIScriptFunction *func = 0;
 
-	asITypeInfo *ot = engine->GetObjectTypeById(typeId);
+	asITypeInfo *ot = engine->GetTypeInfoById(typeId);
 	if( ot )
 	{
 		// Check if the object type has a compatible opEquals method
@@ -101,7 +102,8 @@ int CompareEquality(asIScriptEngine *engine, void *lobj, void *robj, int typeId,
 				f->GetParamCount() == 1 )
 			{
 				asDWORD flags;
-				int paramTypeId = f->GetParamTypeId(0, &flags);
+				int paramTypeId;
+                                f->GetParam(0, &paramTypeId, &flags);
 				
 				// The parameter must be an input reference of the same type
 				if( flags != asTM_INREF || typeId != paramTypeId )
@@ -204,27 +206,24 @@ int WriteConfigToFile(asIScriptEngine *engine, const char *filename)
 	c = engine->GetEnumCount();
 	for( n = 0; n < c; n++ )
 	{
-		int typeId;
-		asDWORD accessMask;
-		const char *nameSpace;
-		const char *enumName = engine->GetEnumByIndex(n, &typeId, &nameSpace, 0, &accessMask);
-		if( accessMask != currAccessMask )
+                asITypeInfo *type = engine->GetEnumByIndex(n);
+		if( type->GetAccessMask() != currAccessMask )
 		{
-			fprintf(f, "access %X\n", accessMask);
-			currAccessMask = accessMask;
+			fprintf(f, "access %X\n", type->GetAccessMask());
+			currAccessMask = type->GetAccessMask();
 		}
-		if( nameSpace != currNamespace )
+		if( type->GetNamespace() != currNamespace )
 		{
-			fprintf(f, "namespace %s\n", nameSpace);
-			currNamespace = nameSpace;
+			fprintf(f, "namespace %s\n", type->GetNamespace());
+			currNamespace = type->GetNamespace();
 		}
-		fprintf(f, "enum %s\n", enumName);
-		for( int m = 0; m < engine->GetEnumValueCount(typeId); m++ )
+		fprintf(f, "enum %s\n", type->GetName());
+		for( int m = 0; m < type->GetEnumValueCount(); m++ )
 		{
 			const char *valName;
 			int val;
-			valName = engine->GetEnumValueByIndex(typeId, m, &val);
-			fprintf(f, "enumval %s %s %d\n", enumName, valName, val);
+			valName = type->GetEnumValueByIndex(m, &val);
+			fprintf(f, "enumval %s %s %d\n", type->GetName(), valName, val);
 		}
 	}
 
@@ -266,27 +265,24 @@ int WriteConfigToFile(asIScriptEngine *engine, const char *filename)
 	c = engine->GetTypedefCount();
 	for( n = 0; n < c; n++ )
 	{
-		int typeId;
-		asDWORD accessMask;
-		const char *nameSpace;
-		const char *typeDef = engine->GetTypedefByIndex(n, &typeId, &nameSpace, 0, &accessMask);
-		if( nameSpace != currNamespace )
+		const asITypeInfo *typeDef = engine->GetTypedefByIndex(n);
+		if( typeDef->GetNamespace() != currNamespace )
 		{
-			fprintf(f, "namespace %s\n", nameSpace);
-			currNamespace = nameSpace;
+			fprintf(f, "namespace %s\n", typeDef->GetNamespace());
+			currNamespace = typeDef->GetNamespace();
 		}
-		if( accessMask != currAccessMask )
+		if( typeDef->GetAccessMask() != currAccessMask )
 		{
-			fprintf(f, "access %X\n", accessMask);
-			currAccessMask = accessMask;
+			fprintf(f, "access %X\n", typeDef->GetAccessMask());
+			currAccessMask = typeDef->GetAccessMask();
 		}
-		fprintf(f, "typedef %s \"%s\"\n", typeDef, engine->GetTypeDeclaration(typeId));
+		fprintf(f, "typedef %s \"%s\"\n", typeDef->GetName(), engine->GetTypeDeclaration(typeDef->GetTypeId()));
 	}
 
 	c = engine->GetFuncdefCount();
 	for( n = 0; n < c; n++ )
 	{
-		asIScriptFunction *funcDef = engine->GetFuncdefByIndex(n);
+		asITypeInfo *funcDef = engine->GetFuncdefByIndex(n);
 		asDWORD accessMask = funcDef->GetAccessMask();
 		const char *nameSpace = funcDef->GetNamespace();
 		if( nameSpace != currNamespace )
@@ -299,7 +295,7 @@ int WriteConfigToFile(asIScriptEngine *engine, const char *filename)
 			fprintf(f, "access %X\n", accessMask);
 			currAccessMask = accessMask;
 		}
-		fprintf(f, "funcdef \"%s\"\n", funcDef->GetDeclaration());
+		fprintf(f, "funcdef \"%s\"\n", funcDef->GetFuncdefSignature()->GetDeclaration());
 	}
 
 	// Write the object types members
@@ -364,7 +360,17 @@ int WriteConfigToFile(asIScriptEngine *engine, const char *filename)
 			for( m = 0; m < type->GetPropertyCount(); m++ )
 			{
 				asDWORD accessMask;
-				type->GetProperty(m, 0, 0, 0, 0, 0, &accessMask);
+                                // , , , , , , , asDWORD *accessMask = 0, int *compositeOffset = 0, bool *isCompositeIndirect = 0
+				type->GetProperty(
+                                        m, // asUINT index
+                                        nullptr, // const char **name
+                                        nullptr, // int *typeId = 0
+                                        nullptr, // bool *isPrivate = 0
+                                        nullptr, // bool *isProtected = 0
+                                        nullptr, // int *offset = 0
+                                        nullptr, // bool *isReference = 0
+                                        &accessMask
+                                        );
 				if( accessMask != currAccessMask )
 				{
 					fprintf(f, "access %X\n", accessMask);
