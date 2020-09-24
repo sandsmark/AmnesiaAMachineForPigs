@@ -47,7 +47,7 @@ static CScriptArray *StringSplit(const string &delim, const string &str)
 
     // TODO: This should only be done once
 	// TODO: This assumes that CScriptArray was already registered
-	asIObjectType *arrayType = engine->GetObjectTypeById(engine->GetTypeIdByDecl("array<string>"));
+	asITypeInfo *arrayType = engine->GetObjectTypeById(engine->GetTypeIdByDecl("array<string>"));
 
     // Create the array object
     CScriptArray *array = new CScriptArray(0, arrayType);

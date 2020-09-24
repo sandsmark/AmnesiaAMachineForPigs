@@ -44,15 +44,15 @@ struct SArrayCache;
 class CScriptArray
 {
 public:
-	CScriptArray(asUINT length, asIObjectType *ot);
-	CScriptArray(asUINT length, void *defVal, asIObjectType *ot);
+	CScriptArray(asUINT length, asITypeInfo *ot);
+	CScriptArray(asUINT length, void *defVal, asITypeInfo *ot);
 	virtual ~CScriptArray();
 
 	void AddRef() const;
 	void Release() const;
 
 	// Type information
-	asIObjectType *GetArrayObjectType() const;
+	asITypeInfo *GetArrayObjectType() const;
 	int            GetArrayTypeId() const;
 	int            GetElementTypeId() const;
 
@@ -94,7 +94,7 @@ public:
 protected:
 	mutable int       refCount;
 	mutable bool      gcFlag;
-	asIObjectType    *objType;
+	asITypeInfo    *objType;
 	SArrayBuffer     *buffer;
 	int               elementSize;
 	int               subTypeId;

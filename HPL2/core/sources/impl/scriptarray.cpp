@@ -50,14 +50,14 @@ struct SArrayCache
 // through 1999 for this purpose, so we should be fine.
 const asPWORD ARRAY_CACHE = 1000;
 
-static void CleanupObjectTypeArrayCache(asIObjectType *type)
+static void CleanupObjectTypeArrayCache(asITypeInfo *type)
 {
 	SArrayCache *cache = reinterpret_cast<SArrayCache*>(type->GetUserData(ARRAY_CACHE));
 	if( cache )
 		delete cache;
 }
 
-static CScriptArray* ScriptArrayFactory2(asIObjectType *ot, asUINT length)
+static CScriptArray* ScriptArrayFactory2(asITypeInfo *ot, asUINT length)
 {
 	CScriptArray *a = new CScriptArray(length, ot);
 
@@ -73,7 +73,7 @@ static CScriptArray* ScriptArrayFactory2(asIObjectType *ot, asUINT length)
 	return a;
 }
 
-static CScriptArray* ScriptArrayFactoryDefVal(asIObjectType *ot, asUINT length, void *defVal)
+static CScriptArray* ScriptArrayFactoryDefVal(asITypeInfo *ot, asUINT length, void *defVal)
 {
 	CScriptArray *a = new CScriptArray(length, defVal, ot);
 
@@ -89,7 +89,7 @@ static CScriptArray* ScriptArrayFactoryDefVal(asIObjectType *ot, asUINT length, 
 	return a;	
 }
 
-static CScriptArray* ScriptArrayFactory(asIObjectType *ot)
+static CScriptArray* ScriptArrayFactory(asITypeInfo *ot)
 {
 	return ScriptArrayFactory2(ot, 0);
 }
@@ -97,7 +97,7 @@ static CScriptArray* ScriptArrayFactory(asIObjectType *ot)
 // This optional callback is called when the template type is first used by the compiler.
 // It allows the application to validate if the template can be instanciated for the requested 
 // subtype at compile time, instead of at runtime.
-static bool ScriptArrayTemplateCallback(asIObjectType *ot)
+static bool ScriptArrayTemplateCallback(asITypeInfo *ot)
 {
 	// Make sure the subtype can be instanciated with a default factory/constructor, 
 	// otherwise we won't be able to instanciate the elements. 
@@ -106,7 +106,7 @@ static bool ScriptArrayTemplateCallback(asIObjectType *ot)
 		return false;
 	if( (typeId & asTYPEID_MASK_OBJECT) && !(typeId & asTYPEID_OBJHANDLE) )
 	{
-		asIObjectType *subtype = ot->GetEngine()->GetObjectTypeById(typeId);
+		asITypeInfo *subtype = ot->GetEngine()->GetTypeInfoById(typeId);
 		asDWORD flags = subtype->GetFlags();
 		if( (flags & asOBJ_VALUE) && !(flags & asOBJ_POD) )
 		{
@@ -168,7 +168,7 @@ static void RegisterScriptArray_Native(asIScriptEngine *engine)
 	int r;
 	
 	// Register the object type user data clean up
-	engine->SetObjectTypeUserDataCleanupCallback(CleanupObjectTypeArrayCache, ARRAY_CACHE);
+	engine->SetTypeInfoUserDataCleanupCallback(CleanupObjectTypeArrayCache, ARRAY_CACHE);
 
 	// Register the array type as a template
 	r = engine->RegisterObjectType("array<class T>", 0, asOBJ_REF | asOBJ_GC | asOBJ_TEMPLATE); assert( r >= 0 );
@@ -177,12 +177,12 @@ static void RegisterScriptArray_Native(asIScriptEngine *engine)
 	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in)", asFUNCTION(ScriptArrayTemplateCallback), asCALL_CDECL); assert( r >= 0 );
 
 	// Templates receive the object type as the first parameter. To the script writer this is hidden
-	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ f(int&in)", asFUNCTIONPR(ScriptArrayFactory, (asIObjectType*), CScriptArray*), asCALL_CDECL); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ f(int&in, uint)", asFUNCTIONPR(ScriptArrayFactory2, (asIObjectType*, asUINT), CScriptArray*), asCALL_CDECL); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ f(int&in, uint, const T &in)", asFUNCTIONPR(ScriptArrayFactoryDefVal, (asIObjectType*, asUINT, void *), CScriptArray*), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ f(int&in)", asFUNCTIONPR(ScriptArrayFactory, (asITypeInfo*), CScriptArray*), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ f(int&in, uint)", asFUNCTIONPR(ScriptArrayFactory2, (asITypeInfo*, asUINT), CScriptArray*), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_FACTORY, "array<T>@ f(int&in, uint, const T &in)", asFUNCTIONPR(ScriptArrayFactoryDefVal, (asITypeInfo*, asUINT, void *), CScriptArray*), asCALL_CDECL); assert( r >= 0 );
 
 	// Register the factory that will be used for initialization lists
-	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_LIST_FACTORY, "array<T>@ f(int&in, uint)", asFUNCTIONPR(ScriptArrayFactory2, (asIObjectType*, asUINT), CScriptArray*), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_LIST_FACTORY, "array<T>@ f(int&in, uint)", asFUNCTIONPR(ScriptArrayFactory2, (asITypeInfo*, asUINT), CScriptArray*), asCALL_CDECL); assert( r >= 0 );
 
 	// The memory management methods
 	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(CScriptArray,AddRef), asCALL_THISCALL); assert( r >= 0 );
@@ -257,7 +257,7 @@ CScriptArray &CScriptArray::operator=(const CScriptArray &other)
 	return *this;
 }
 
-CScriptArray::CScriptArray(asUINT length, asIObjectType *ot)
+CScriptArray::CScriptArray(asUINT length, asITypeInfo *ot)
 {
 	refCount = 1;
 	gcFlag = false;
@@ -291,7 +291,7 @@ CScriptArray::CScriptArray(asUINT length, asIObjectType *ot)
 		objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType);
 }
 
-CScriptArray::CScriptArray(asUINT length, void *defVal, asIObjectType *ot)
+CScriptArray::CScriptArray(asUINT length, void *defVal, asITypeInfo *ot)
 {
 	refCount = 1;
 	gcFlag = false;
@@ -337,7 +337,7 @@ void CScriptArray::SetValue(asUINT index, void *value)
 	if( ptr == 0 ) return;
 
 	if( (subTypeId & ~asTYPEID_MASK_SEQNBR) && !(subTypeId & asTYPEID_OBJHANDLE) )
-		objType->GetEngine()->AssignScriptObject(ptr, value, subTypeId);
+		objType->GetEngine()->AssignScriptObject(ptr, value, objType->GetSubType());
 	else if( subTypeId & asTYPEID_OBJHANDLE )
 	{
 		void *tmp = *(void**)ptr;
@@ -528,7 +528,7 @@ bool CScriptArray::CheckMaxSize(asUINT numElements)
 	return true;
 }
 
-asIObjectType *CScriptArray::GetArrayObjectType() const
+asITypeInfo *CScriptArray::GetArrayObjectType() const
 {
 	return objType;
 }
@@ -670,7 +670,7 @@ void CScriptArray::Construct(SArrayBuffer *buf, asUINT start, asUINT end)
 		asIScriptEngine *engine = objType->GetEngine();
 
 		for( ; d < max; d++ )
-			*d = (void*)engine->CreateScriptObject(subTypeId);
+			*d = (void*)engine->CreateScriptObject(objType->GetSubType());
 	}
 }
 
@@ -903,7 +903,7 @@ int CScriptArray::Find(asUINT index, void *value) const
 		if( !cache || (cache->cmpFunc == 0 && cache->eqFunc == 0) )
 		{
 			asIScriptContext *ctx = asGetActiveContext();
-			asIObjectType* subType = objType->GetEngine()->GetObjectTypeById(subTypeId);
+			asITypeInfo* subType = objType->GetEngine()->GetTypeInfoById(subTypeId);
 
 			// Throw an exception
 			if( ctx )
@@ -1044,7 +1044,7 @@ void CScriptArray::Sort(asUINT index, asUINT count, bool asc)
 		if( !cache || cache->cmpFunc == 0 )
 		{
 			asIScriptContext *ctx = asGetActiveContext();
-			asIObjectType* subType = objType->GetEngine()->GetObjectTypeById(subTypeId);
+			asITypeInfo* subType = objType->GetEngine()->GetTypeInfoById(subTypeId);
 
 			// Throw an exception
 			if( ctx )
@@ -1177,7 +1177,7 @@ void CScriptArray::CopyBuffer(SArrayBuffer *dst, SArrayBuffer *src)
 				void **s   = (void**)src->data;
 
 				for( ; d < max; d++, s++ )
-					engine->AssignScriptObject(*d, *s, subTypeId);
+					engine->AssignScriptObject(*d, *s, objType->GetSubType());
 			}
 			else
 			{
@@ -1223,7 +1223,7 @@ void CScriptArray::Precache()
 	cache = new SArrayCache();
 	memset(cache, 0, sizeof(SArrayCache));
 
-	asIObjectType *subType = objType->GetEngine()->GetObjectTypeById(subTypeId);
+	asITypeInfo *subType = objType->GetEngine()->GetTypeInfoById(subTypeId);
 	if( subType )
 	{
 		for( asUINT i = 0; i < subType->GetMethodCount(); i++ )
@@ -1234,7 +1234,8 @@ void CScriptArray::Precache()
 			{
 				asDWORD flags = 0;
 				int returnTypeId = func->GetReturnTypeId();
-				int paramTypeId = func->GetParamTypeId(0, &flags);
+				int paramTypeId;
+                                func->GetParam(0, &paramTypeId, &flags);
 
 				// The parameter must either be a reference to the subtype or a handle to the subtype			
 				if( ((flags & asTM_INREF) && paramTypeId == subTypeId) ||
@@ -1323,14 +1324,14 @@ bool CScriptArray::GetFlag()
 
 static void ScriptArrayFactory_Generic(asIScriptGeneric *gen)
 {
-	asIObjectType *ot = *(asIObjectType**)gen->GetAddressOfArg(0);
+	asITypeInfo *ot = *(asITypeInfo**)gen->GetAddressOfArg(0);
 
 	*(CScriptArray**)gen->GetAddressOfReturnLocation() = ScriptArrayFactory(ot);
 }
 
 static void ScriptArrayFactory2_Generic(asIScriptGeneric *gen)
 {
-	asIObjectType *ot = *(asIObjectType**)gen->GetAddressOfArg(0);
+	asITypeInfo *ot = *(asITypeInfo**)gen->GetAddressOfArg(0);
 	asUINT length = gen->GetArgDWord(1);
 
 	*(CScriptArray**)gen->GetAddressOfReturnLocation() = ScriptArrayFactory2(ot, length);
@@ -1338,7 +1339,7 @@ static void ScriptArrayFactory2_Generic(asIScriptGeneric *gen)
 
 static void ScriptArrayFactoryDefVal_Generic(asIScriptGeneric *gen)
 {
-	asIObjectType *ot = *(asIObjectType**)gen->GetAddressOfArg(0);
+	asITypeInfo *ot = *(asITypeInfo**)gen->GetAddressOfArg(0);
 	asUINT length = gen->GetArgDWord(1);
 	void *defVal = gen->GetArgAddress(2);
 
@@ -1347,7 +1348,7 @@ static void ScriptArrayFactoryDefVal_Generic(asIScriptGeneric *gen)
 
 static void ScriptArrayTemplateCallback_Generic(asIScriptGeneric *gen)
 {
-	asIObjectType *ot = *(asIObjectType**)gen->GetAddressOfArg(0);
+	asITypeInfo *ot = *(asITypeInfo**)gen->GetAddressOfArg(0);
 	*(bool*)gen->GetAddressOfReturnLocation() = ScriptArrayTemplateCallback(ot);
 }
 

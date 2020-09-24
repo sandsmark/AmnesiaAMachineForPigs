@@ -35,7 +35,7 @@ int CompareRelation(asIScriptEngine *engine, void *lobj, void *robj, int typeId,
 	int retval = -1;
 	asIScriptFunction *func = 0;
 
-	asIObjectType *ot = engine->GetObjectTypeById(typeId);
+	asITypeInfo *ot = engine->GetObjectTypeById(typeId);
 	if( ot )
 	{
 		// Check if the object type has a compatible opCmp method
@@ -89,7 +89,7 @@ int CompareEquality(asIScriptEngine *engine, void *lobj, void *robj, int typeId,
 	int retval = -1;
 	asIScriptFunction *func = 0;
 
-	asIObjectType *ot = engine->GetObjectTypeById(typeId);
+	asITypeInfo *ot = engine->GetObjectTypeById(typeId);
 	if( ot )
 	{
 		// Check if the object type has a compatible opEquals method
@@ -234,7 +234,7 @@ int WriteConfigToFile(asIScriptEngine *engine, const char *filename)
 	c = engine->GetObjectTypeCount();
 	for( n = 0; n < c; n++ )
 	{
-		asIObjectType *type = engine->GetObjectTypeByIndex(n);
+		asITypeInfo *type = engine->GetObjectTypeByIndex(n);
 		asDWORD accessMask = type->GetAccessMask();
 		if( accessMask != currAccessMask )
 		{
@@ -308,7 +308,7 @@ int WriteConfigToFile(asIScriptEngine *engine, const char *filename)
 	c = engine->GetObjectTypeCount();
 	for( n = 0; n < c; n++ )
 	{
-		asIObjectType *type = engine->GetObjectTypeByIndex(n);
+		asITypeInfo *type = engine->GetObjectTypeByIndex(n);
 		const char *nameSpace = type->GetNamespace();
 		if( nameSpace != currNamespace )
 		{
