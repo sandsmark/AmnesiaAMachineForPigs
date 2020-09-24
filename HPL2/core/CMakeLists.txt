@@ -19,6 +19,7 @@ ENDIF()
 
 OPTION(USE_SDL2 "Use SDL2 instead of SDL1.2" ON)
 
+set(PRIVATE_LIB_DIR OFF)
 add_subdirectory(../dependencies/OALWrapper OALWrapper)
 
 IF(USE_SDL2)
